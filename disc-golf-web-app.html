@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disc Golf Encyclopedia - Flight Path Analyzer</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .content-area {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-section {
+            margin-bottom: 25px;
+        }
+
+        .filter-section h3 {
+            color: #667eea;
+            font-size: 1em;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .disc-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .disc-item {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .disc-item:hover {
+            border-color: #667eea;
+            transform: translateX(4px);
+        }
+
+        .disc-item.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .disc-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .disc-name {
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .disc-manufacturer {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
+        .flight-numbers {
+            display: flex;
+            gap: 8px;
+            font-size: 0.85em;
+            margin-top: 6px;
+        }
+
+        .flight-num {
+            padding: 2px 8px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .disc-item.selected .flight-num {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            min-width: 80px;
+        }
+
+        .control-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .control-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .disc-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .detail-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .detail-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .stability-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .stability-overstable {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .stability-stable {
+            background: #51cf66;
+            color: white;
+        }
+
+        .stability-understable {
+            background: #339af0;
+            color: white;
+        }
+
+        .disc-type-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            background: #764ba2;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #667eea;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .comparison-mode {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comparison-mode h3 {
+            margin: 0;
+        }
+
+        .comparison-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .clear-btn:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+
+        .trajectory-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        /* Custom range slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #667eea 0%, #764ba2 100%);
+            outline: none;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #667eea;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #667eea;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            border-color: #764ba2;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.1);
+            border-color: #764ba2;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .disc-details {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95em;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Utility functions
+        
+        const getDiscType = (speed) => {
+            if (speed <= 3) return "Putter";
+            if (speed <= 5) return "Midrange";
+            if (speed <= 9) return "Fairway Driver";
+            return "Distance Driver";
+        };
+
+        const getStabilityCategory = (stability) => {
+            if (stability <= 1) return { label: "Understable", class: "understable" };
+            if (stability <= 3) return { label: "Stable", class: "stable" };
+            return { label: "Overstable", class: "overstable" };
+        };
+
+        const parseTrajectory = (trajectoryString, xScaleFactor = -20, yScaleFactor = 1, throwStyle = 'bh') => {
+            try {
+                const data = JSON.parse(trajectoryString);
+                // For forehand, mirror the X-axis (multiply by -1)
+                const xMirror = throwStyle === 'fh' ? -1 : 1;
+                return data.map(point => ({
+                    x: point.x * xScaleFactor * xMirror,
+                    y: point.y  // Don't scale Y here - we'll scale the axis range instead
+                }));
+            } catch (e) {
+                return [];
+            }
+        };
+
+        const parseTrajectoryOriginal = (trajectoryString, throwStyle = 'bh') => {
+            try {
+                const data = JSON.parse(trajectoryString);
+                // For forehand, mirror the X-axis (multiply by -1)
+                const xMirror = throwStyle === 'fh' ? -1 : 1;
+                // Return original data with standard -100 X scaling and 1.0 Y scaling for true measurements
+                return data.map(point => ({
+                    x: point.x * -100 * xMirror,
+                    y: point.y * 1.0
+                }));
+            } catch (e) {
+                return [];
+            }
+        };
+
+        const calculateTrajectoryStats = (trajectory) => {
+            if (trajectory.length === 0) return { distance: 0, maxTurn: 0, finalFade: 0 };
+            
+            const xs = trajectory.map(p => p.x);
+            const ys = trajectory.map(p => p.y);
+            
+            return {
+                distance: Math.round(ys[ys.length - 1] * 10) / 10,
+                maxTurn: Math.round(Math.max(...xs) * 10) / 10,
+                finalFade: Math.round(xs[xs.length - 1] * 10) / 10
+            };
+        };
+
+        // Main App Component
+        function App() {
+            const [discs, setDiscs] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [selectedDiscIds, setSelectedDiscIds] = useState([]);
+            const [searchTerm, setSearchTerm] = useState("");
+            const [throwStyle, setThrowStyle] = useState("bh"); // bh or fh
+            const [power, setPower] = useState("2"); // 1, 2, or 3
+            const [speedFilter, setSpeedFilter] = useState("all");
+            const [stabilityFilter, setStabilityFilter] = useState("all");
+            const [xScale, setXScale] = useState(-20); // X-axis scaling factor
+            const [yScale, setYScale] = useState(1); // Y-axis scaling factor
+            const [lineThickness, setLineThickness] = useState(3); // Line thickness in pixels
+
+            // Load disc data
+            useEffect(() => {
+                // Load from same directory as HTML file
+                fetch('disc_data.json')
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error(`Failed to load disc_data.json (${res.status})`);
+                        }
+                        return res.json();
+                    })
+                    .then(data => {
+                        console.log(`Loaded ${data.length} discs successfully!`);
+                        setDiscs(data);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error("Error loading disc data:", err);
+                        alert("âš ï¸ Error loading disc data!\n\nPlease ensure disc_data.json is in the same directory as disc_golf_encyclopedia.html\n\nIf using a web server, make sure both files are in the server's root directory.");
+                        setLoading(false);
+                    });
+            }, []);
+
+            // Filter discs
+            const filteredDiscs = useMemo(() => {
+                return discs.filter(disc => {
+                    const matchesSearch = disc.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        disc.manufacturer.toLowerCase().includes(searchTerm.toLowerCase());
+                    
+                    const matchesSpeed = speedFilter === "all" || 
+                                        (speedFilter === "putter" && disc.speed <= 3) ||
+                                        (speedFilter === "mid" && disc.speed >= 4 && disc.speed <= 5) ||
+                                        (speedFilter === "fairway" && disc.speed >= 6 && disc.speed <= 9) ||
+                                        (speedFilter === "distance" && disc.speed >= 10);
+                    
+                    const matchesStability = stabilityFilter === "all" ||
+                                            (stabilityFilter === "understable" && disc.stability <= 1) ||
+                                            (stabilityFilter === "stable" && disc.stability > 1 && disc.stability <= 3) ||
+                                            (stabilityFilter === "overstable" && disc.stability > 3);
+                    
+                    return matchesSearch && matchesSpeed && matchesStability;
+                });
+            }, [discs, searchTerm, speedFilter, stabilityFilter]);
+
+            const selectedDiscs = discs.filter(disc => selectedDiscIds.includes(disc.id));
+
+            const toggleDiscSelection = (discId) => {
+                setSelectedDiscIds(prev => {
+                    if (prev.includes(discId)) {
+                        return prev.filter(id => id !== discId);
+                    } else {
+                        return [...prev, discId];
+                    }
+                });
+            };
+
+            const clearSelection = () => {
+                setSelectedDiscIds([]);
+            };
+
+            if (loading) {
+                return <div className="loading">Loading disc database...</div>;
+            }
+
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h1>
+                            ðŸ¥ Disc Golf Encyclopedia
+                        </h1>
+                        <p>Interactive flight path analyzer with {discs.length} discs</p>
+                    </div>
+
+                    <div className="main-content">
+                        <Sidebar
+                            discs={filteredDiscs}
+                            selectedDiscIds={selectedDiscIds}
+                            onDiscSelect={toggleDiscSelection}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            speedFilter={speedFilter}
+                            onSpeedFilterChange={setSpeedFilter}
+                            stabilityFilter={stabilityFilter}
+                            onStabilityFilterChange={setStabilityFilter}
+                        />
+
+                        <div className="content-area">
+                            {selectedDiscIds.length > 1 && (
+                                <div className="comparison-mode">
+                                    <h3>Comparison Mode</h3>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+                                        <span className="comparison-count">{selectedDiscIds.length} discs</span>
+                                        <button className="clear-btn" onClick={clearSelection}>
+                                            Clear All
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <FlightControls
+                                throwStyle={throwStyle}
+                                onThrowStyleChange={setThrowStyle}
+                                power={power}
+                                onPowerChange={setPower}
+                                xScale={xScale}
+                                onXScaleChange={setXScale}
+                                yScale={yScale}
+                                onYScaleChange={setYScale}
+                                lineThickness={lineThickness}
+                                onLineThicknessChange={setLineThickness}
+                            />
+
+                            {selectedDiscs.length > 0 ? (
+                                <>
+                                    <FlightChart
+                                        discs={selectedDiscs}
+                                        throwStyle={throwStyle}
+                                        power={power}
+                                        xScale={xScale}
+                                        yScale={yScale}
+                                        lineThickness={lineThickness}
+                                    />
+                                    
+                                    <DiscDetails discs={selectedDiscs} />
+                                </>
+                            ) : (
+                                <div className="empty-state">
+                                    <h2>No Disc Selected</h2>
+                                    <p>Select one or more discs from the sidebar to view flight paths and details</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Sidebar Component
+        function Sidebar({ discs, selectedDiscIds, onDiscSelect, searchTerm, onSearchChange, 
+                          speedFilter, onSpeedFilterChange, stabilityFilter, onStabilityFilterChange }) {
+            return (
+                <div className="sidebar">
+                    <input
+                        type="text"
+                        className="search-box"
+                        placeholder="Search discs..."
+                        value={searchTerm}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                    />
+
+                    <div className="filter-section">
+                        <h3>Disc Type</h3>
+                        <div className="filter-group">
+                            {["all", "putter", "mid", "fairway", "distance"].map(type => (
+                                <button
+                                    key={type}
+                                    className={`filter-btn ${speedFilter === type ? 'active' : ''}`}
+                                    onClick={() => onSpeedFilterChange(type)}
+                                >
+                                    {type === "all" ? "All" : 
+                                     type === "mid" ? "Midrange" :
+                                     type.charAt(0).toUpperCase() + type.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="filter-section">
+                        <h3>Stability</h3>
+                        <div className="filter-group">
+                            {["all", "understable", "stable", "overstable"].map(stab => (
+                                <button
+                                    key={stab}
+                                    className={`filter-btn ${stabilityFilter === stab ? 'active' : ''}`}
+                                    onClick={() => onStabilityFilterChange(stab)}
+                                >
+                                    {stab.charAt(0).toUpperCase() + stab.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="filter-section">
+                        <h3>Discs ({discs.length})</h3>
+                        <div className="disc-list">
+                            {discs.map(disc => (
+                                <DiscListItem
+                                    key={disc.id}
+                                    disc={disc}
+                                    selected={selectedDiscIds.includes(disc.id)}
+                                    onClick={() => onDiscSelect(disc.id)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Disc List Item Component
+        function DiscListItem({ disc, selected, onClick }) {
+            return (
+                <div 
+                    className={`disc-item ${selected ? 'selected' : ''}`}
+                    onClick={onClick}
+                >
+                    <div className="disc-item-header">
+                        <div>
+                            <div className="disc-name">{disc.model}</div>
+                            <div className="disc-manufacturer">{disc.manufacturer}</div>
+                        </div>
+                    </div>
+                    <div className="flight-numbers">
+                        <span className="flight-num">S: {disc.speed}</span>
+                        <span className="flight-num">G: {disc.glide}</span>
+                        <span className="flight-num">T: {disc.turn}</span>
+                        <span className="flight-num">F: {disc.fade}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Flight Controls Component
+        function FlightControls({ throwStyle, onThrowStyleChange, power, onPowerChange, xScale, onXScaleChange, yScale, onYScaleChange, lineThickness, onLineThicknessChange }) {
+            return (
+                <div className="controls-section">
+                    <div className="controls-grid">
+                        <div className="control-group">
+                            <div className="control-label">Throw Style</div>
+                            <div className="button-group">
+                                <button
+                                    className={`control-btn ${throwStyle === 'bh' ? 'active' : ''}`}
+                                    onClick={() => onThrowStyleChange('bh')}
+                                >
+                                    Backhand (RHBH)
+                                </button>
+                                <button
+                                    className={`control-btn ${throwStyle === 'fh' ? 'active' : ''}`}
+                                    onClick={() => onThrowStyleChange('fh')}
+                                >
+                                    Forehand (RHFH)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="control-group">
+                            <div className="control-label">Power Level</div>
+                            <div className="button-group">
+                                <button
+                                    className={`control-btn ${power === '1' ? 'active' : ''}`}
+                                    onClick={() => onPowerChange('1')}
+                                >
+                                    Slower
+                                </button>
+                                <button
+                                    className={`control-btn ${power === '2' ? 'active' : ''}`}
+                                    onClick={() => onPowerChange('2')}
+                                >
+                                    Normal
+                                </button>
+                                <button
+                                    className={`control-btn ${power === '3' ? 'active' : ''}`}
+                                    onClick={() => onPowerChange('3')}
+                                >
+                                    Faster
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* X-Axis Scaling Control */}
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '20px',
+                        background: 'white',
+                        borderRadius: '12px',
+                        border: '2px solid #667eea'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '15px'
+                        }}>
+                            <div>
+                                <div className="control-label" style={{marginBottom: '5px'}}>
+                                    X-Axis Scale Factor
+                                </div>
+                                <div style={{fontSize: '0.85em', color: '#666'}}>
+                                    Adjust lateral axis scaling
+                                </div>
+                            </div>
+                            <div style={{
+                                fontSize: '2em',
+                                fontWeight: 'bold',
+                                color: '#667eea',
+                                fontFamily: 'monospace',
+                                minWidth: '120px',
+                                textAlign: 'right'
+                            }}>
+                                {xScale}
+                            </div>
+                        </div>
+
+                        <div style={{marginBottom: '15px'}}>
+                            <input
+                                type="range"
+                                min="-200"
+                                max="-1"
+                                step="1"
+                                value={xScale}
+                                onChange={(e) => onXScaleChange(Number(e.target.value))}
+                                style={{
+                                    width: '100%',
+                                    height: '8px',
+                                    borderRadius: '4px',
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '0.75em',
+                                color: '#999',
+                                marginTop: '5px'
+                            }}>
+                                <span>-200 (Wide)</span>
+                                <span>-20 (Default)</span>
+                                <span>-1 (Narrow)</span>
+                            </div>
+                        </div>
+
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <input
+                                type="number"
+                                value={xScale}
+                                onChange={(e) => onXScaleChange(Number(e.target.value))}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    fontSize: '1em',
+                                    fontFamily: 'monospace'
+                                }}
+                            />
+                            <button
+                                onClick={() => onXScaleChange(-20)}
+                                style={{
+                                    padding: '8px 16px',
+                                    background: '#f0f0f0',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                Reset to -20
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Y-Axis Scaling Control */}
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '20px',
+                        background: 'white',
+                        borderRadius: '12px',
+                        border: '2px solid #51cf66'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '15px'
+                        }}>
+                            <div>
+                                <div className="control-label" style={{marginBottom: '5px'}}>
+                                    Y-Axis Scale Factor
+                                </div>
+                                <div style={{fontSize: '0.85em', color: '#666'}}>
+                                    Adjust distance/downfield scaling
+                                </div>
+                            </div>
+                            <div style={{
+                                fontSize: '2em',
+                                fontWeight: 'bold',
+                                color: '#51cf66',
+                                fontFamily: 'monospace',
+                                minWidth: '120px',
+                                textAlign: 'right'
+                            }}>
+                                {yScale.toFixed(2)}
+                            </div>
+                        </div>
+
+                        <div style={{marginBottom: '15px'}}>
+                            <input
+                                type="range"
+                                min="0.1"
+                                max="3"
+                                step="0.05"
+                                value={yScale}
+                                onChange={(e) => onYScaleChange(Number(e.target.value))}
+                                style={{
+                                    width: '100%',
+                                    height: '8px',
+                                    borderRadius: '4px',
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '0.75em',
+                                color: '#999',
+                                marginTop: '5px'
+                            }}>
+                                <span>0.1 (Short)</span>
+                                <span>1.0 (Default)</span>
+                                <span>3.0 (Long)</span>
+                            </div>
+                        </div>
+
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <input
+                                type="number"
+                                value={yScale}
+                                step="0.05"
+                                onChange={(e) => onYScaleChange(Number(e.target.value))}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    fontSize: '1em',
+                                    fontFamily: 'monospace'
+                                }}
+                            />
+                            <button
+                                onClick={() => onYScaleChange(1.0)}
+                                style={{
+                                    padding: '8px 16px',
+                                    background: '#f0f0f0',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                Reset to 1.0
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Line Thickness Control */}
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '20px',
+                        background: 'white',
+                        borderRadius: '12px',
+                        border: '2px solid #f39c12'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '15px'
+                        }}>
+                            <div>
+                                <div className="control-label" style={{marginBottom: '5px'}}>
+                                    Line Thickness
+                                </div>
+                                <div style={{fontSize: '0.85em', color: '#666'}}>
+                                    Adjust trajectory line width
+                                </div>
+                            </div>
+                            <div style={{
+                                fontSize: '2em',
+                                fontWeight: 'bold',
+                                color: '#f39c12',
+                                fontFamily: 'monospace',
+                                minWidth: '120px',
+                                textAlign: 'right'
+                            }}>
+                                {lineThickness}
+                            </div>
+                        </div>
+
+                        <div style={{marginBottom: '15px'}}>
+                            <input
+                                type="range"
+                                min="1"
+                                max="10"
+                                step="1"
+                                value={lineThickness}
+                                onChange={(e) => onLineThicknessChange(Number(e.target.value))}
+                                style={{
+                                    width: '100%',
+                                    height: '8px',
+                                    borderRadius: '4px',
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '0.75em',
+                                color: '#999',
+                                marginTop: '5px'
+                            }}>
+                                <span>1 (Thin)</span>
+                                <span>3 (Default)</span>
+                                <span>10 (Thick)</span>
+                            </div>
+                        </div>
+
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <input
+                                type="number"
+                                value={lineThickness}
+                                min="1"
+                                max="10"
+                                onChange={(e) => onLineThicknessChange(Number(e.target.value))}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    fontSize: '1em',
+                                    fontFamily: 'monospace'
+                                }}
+                            />
+                            <button
+                                onClick={() => onLineThicknessChange(3)}
+                                style={{
+                                    padding: '8px 16px',
+                                    background: '#f0f0f0',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                Reset to 3
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{
+                        marginTop: '15px',
+                        padding: '12px',
+                        background: '#f8f9fa',
+                        borderRadius: '6px',
+                        fontSize: '0.85em',
+                        color: '#666'
+                    }}>
+                        <strong>ðŸ’¡ Tip:</strong> Adjust these values until the chart looks correct, 
+                        then share them with me to set as defaults!
+                    </div>
+                </div>
+            );
+        }
+
+        // Flight Chart Component
+        function FlightChart({ discs, throwStyle, power, xScale, yScale, lineThickness }) {
+            const chartId = 'flight-chart';
+            
+            useEffect(() => {
+                const colors = ['#667eea', '#e74c3c', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c'];
+                const trajectoryKey = `${throwStyle}${power}`;
+                
+                const traces = discs.map((disc, index) => {
+                    const trajectory = parseTrajectory(disc[trajectoryKey] || '[]', xScale, yScale, throwStyle);
+                    
+                    return {
+                        x: trajectory.map(p => p.x),
+                        y: trajectory.map(p => p.y),
+                        mode: 'lines+markers',
+                        name: `${disc.manufacturer} ${disc.model}`,
+                        line: {
+                            color: colors[index % colors.length],
+                            width: lineThickness
+                        },
+                        marker: {
+                            size: 6,
+                            color: colors[index % colors.length]
+                        }
+                    };
+                });
+
+                // Calculate max Y for reference
+                const allY = traces.flatMap(t => t.y);
+                const maxY = Math.max(...allY);
+                
+                // Y-axis range scales based on yScale factor
+                // Higher yScale = smaller range = trajectory appears taller
+                const baseYRange = 600; // Base range in feet
+                const yRange = [0, baseYRange / yScale];
+
+                // FIXED X-axis range - doesn't change with scale factor
+                // This ensures visual width changes when scale changes
+                const xRange = [-150, 150]; // Fixed range in feet
+
+                const layout = {
+                    title: {
+                        text: `Flight Path - ${throwStyle === 'bh' ? 'Backhand (RHBH)' : 'Forehand (RHFH)'} - ${power === '1' ? 'Slower' : power === '2' ? 'Normal' : 'Faster'} Power<br><sub>X-Scale: ${xScale} | Y-Scale: ${yScale.toFixed(2)} | Line: ${lineThickness}px</sub>`,
+                        font: { size: 18, color: '#667eea', weight: 600 }
+                    },
+                    xaxis: {
+                        title: {
+                            text: 'Lateral Position (feet)<br><sub>â† Left (Fade) | Center | Right (Turn) â†’</sub>',
+                            font: { size: 14 }
+                        },
+                        zeroline: true,
+                        zerolinewidth: 2,
+                        zerolinecolor: '#888',
+                        gridcolor: '#e0e0e0',
+                        range: xRange,
+                        fixedrange: false
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Distance Downfield (feet)',
+                            font: { size: 14 }
+                        },
+                        zeroline: true,
+                        zerolinewidth: 2,
+                        zerolinecolor: '#888',
+                        gridcolor: '#e0e0e0',
+                        range: yRange,
+                        fixedrange: false
+                    },
+                    hovermode: 'closest',
+                    showlegend: true,
+                    legend: {
+                        x: 1.02,
+                        xanchor: 'left',
+                        y: 1,
+                        bgcolor: 'rgba(255,255,255,0.9)',
+                        bordercolor: '#ddd',
+                        borderwidth: 1
+                    },
+                    plot_bgcolor: '#fafafa',
+                    paper_bgcolor: 'white',
+                    margin: { l: 80, r: 200, t: 100, b: 80 },
+                    autosize: true,
+                    shapes: [
+                        // Release point marker
+                        {
+                            type: 'circle',
+                            xref: 'x',
+                            yref: 'y',
+                            x0: -2,
+                            y0: -2,
+                            x1: 2,
+                            y1: 2,
+                            fillcolor: '#ff6b6b',
+                            line: { color: '#ff6b6b', width: 2 },
+                            opacity: 0.6
+                        }
+                    ],
+                    annotations: [
+                        // Release point label
+                        {
+                            x: 0,
+                            y: -15,
+                            text: 'ðŸŽ¯ Release',
+                            showarrow: false,
+                            font: { size: 12, color: '#ff6b6b', weight: 600 }
+                        }
+                    ]
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d', 'resetScale2d'],
+                    toImageButtonOptions: {
+                        format: 'png',
+                        filename: `disc_flight_${throwStyle}${power}_x${xScale}_y${yScale.toFixed(2)}_line${lineThickness}_${Date.now()}`,
+                        height: 800,
+                        width: 1200,
+                        scale: 2
+                    }
+                };
+
+                Plotly.newPlot(chartId, traces, layout, config);
+            }, [discs, throwStyle, power, xScale, yScale, lineThickness]);
+
+            return (
+                <div className="chart-container">
+                    <div id={chartId} style={{width: '100%', height: '600px'}}></div>
+                    
+                    <TrajectoryStats
+                        discs={discs}
+                        throwStyle={throwStyle}
+                        power={power}
+                        xScale={xScale}
+                        yScale={yScale}
+                        lineThickness={lineThickness}
+                    />
+                    
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '15px',
+                        background: '#f0f4ff',
+                        borderRadius: '8px',
+                        borderLeft: '4px solid #667eea'
+                    }}>
+                        <h4 style={{margin: '0 0 10px 0', color: '#667eea'}}>
+                            ðŸ“– How to Read the Chart
+                        </h4>
+                        <div style={{fontSize: '0.9em', lineHeight: '1.6'}}>
+                            <strong>X-Axis (Lateral Position):</strong>
+                            <ul style={{margin: '5px 0', paddingLeft: '20px'}}>
+                                <li><strong>Negative (Left):</strong> Fade - disc finishing left of center</li>
+                                <li><strong>Zero (Center):</strong> Straight flight path</li>
+                                <li><strong>Positive (Right):</strong> Turn - disc turning right</li>
+                            </ul>
+                            <strong>Y-Axis (Distance):</strong> Forward distance from release point to landing
+                            <br/>
+                            <strong>Typical Patterns:</strong>
+                            <ul style={{margin: '5px 0', paddingLeft: '20px'}}>
+                                <li><strong>Understable:</strong> Turns right, may fade back left (S-curve)</li>
+                                <li><strong>Stable:</strong> Flies relatively straight with slight fade</li>
+                                <li><strong>Overstable:</strong> Minimal turn, strong left fade</li>
+                            </ul>
+                            <div style={{
+                                marginTop: '10px',
+                                padding: '8px',
+                                background: 'white',
+                                borderRadius: '4px',
+                                fontSize: '0.9em'
+                            }}>
+                                <strong>ðŸ“ Axis Scaling:</strong>
+                                <br/>
+                                <strong>X-Axis:</strong> Fixed range -150 to +150 feet. X-Scale adjusts trajectory width.
+                                <br/>
+                                <strong>Y-Axis:</strong> Range adjusts with Y-Scale (600 Ã· Y-Scale). Higher Y-Scale = trajectory appears taller.
+                                <br/>
+                                <em>Trajectory data stays constant. Scale factors change how it appears on the chart.</em>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Trajectory Stats Component
+        function TrajectoryStats({ discs, throwStyle, power, xScale, yScale, lineThickness }) {
+            const trajectoryKey = `${throwStyle}${power}`;
+            
+            return (
+                <>
+                    <div style={{
+                        marginTop: '15px',
+                        marginBottom: '10px',
+                        padding: '10px 15px',
+                        background: '#e7f3ff',
+                        borderRadius: '8px',
+                        borderLeft: '4px solid #667eea',
+                        fontSize: '0.9em'
+                    }}>
+                        <strong>ðŸ“Š Statistics calculated from original data (standard -100 X-scale, 1.0 Y-scale)</strong>
+                        <div style={{fontSize: '0.85em', color: '#4a5568', marginTop: '4px'}}>
+                            Current visual settings: X-Scale: {xScale} | Y-Scale: {yScale.toFixed(2)} | Line: {lineThickness}px
+                            <br/>
+                            (Visual settings affect chart appearance only, not measurements)
+                        </div>
+                    </div>
+                    <div className="trajectory-legend">
+                        {discs.map((disc, index) => {
+                            // Use ORIGINAL trajectory for statistics (not affected by xScale slider)
+                            const trajectoryOriginal = parseTrajectoryOriginal(disc[trajectoryKey] || '[]', throwStyle);
+                            const stats = calculateTrajectoryStats(trajectoryOriginal);
+                            const colors = ['#667eea', '#e74c3c', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c'];
+                            
+                            // Determine flight pattern
+                            const maxTurnAbs = Math.abs(stats.maxTurn);
+                            const finalFadeAbs = Math.abs(stats.finalFade);
+                            let pattern = '';
+                            
+                            if (maxTurnAbs > 10 && finalFadeAbs > 10) {
+                                pattern = 'S-Curve (Turn right â†’ Fade left)';
+                            } else if (finalFadeAbs > 20) {
+                                pattern = 'Strong Fade Left';
+                            } else if (maxTurnAbs > 10) {
+                                pattern = 'Turns Right';
+                            } else {
+                                pattern = 'Relatively Straight';
+                            }
+                            
+                            return (
+                                <div key={disc.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px',
+                                    padding: '12px',
+                                    background: 'white',
+                                    borderRadius: '8px',
+                                    border: '2px solid ' + colors[index % colors.length],
+                                    width: '100%'
+                                }}>
+                                    <div style={{
+                                        width: '4px',
+                                        height: '40px',
+                                        backgroundColor: colors[index % colors.length],
+                                        borderRadius: '2px',
+                                        flexShrink: 0
+                                    }}></div>
+                                    <div style={{flex: 1}}>
+                                        <div style={{
+                                            fontWeight: 'bold',
+                                            fontSize: '1.05em',
+                                            color: '#333',
+                                            marginBottom: '4px'
+                                        }}>
+                                            {disc.manufacturer} {disc.model}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.9em',
+                                            color: '#666',
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: '12px'
+                                        }}>
+                                            <span><strong>Distance:</strong> {stats.distance} ft</span>
+                                            <span><strong>Max Turn:</strong> {stats.maxTurn > 0 ? '+' : ''}{stats.maxTurn} ft</span>
+                                            <span><strong>Final Fade:</strong> {stats.finalFade} ft</span>
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.85em',
+                                            color: '#888',
+                                            marginTop: '4px',
+                                            fontStyle: 'italic'
+                                        }}>
+                                            {pattern}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            );
+        }
+
+        // Disc Details Component
+        function DiscDetails({ discs }) {
+            return (
+                <div className="disc-details">
+                    {discs.map(disc => (
+                        <DiscDetailCard key={disc.id} disc={disc} />
+                    ))}
+                </div>
+            );
+        }
+
+        // Disc Detail Card Component
+        function DiscDetailCard({ disc }) {
+            const discType = getDiscType(disc.speed);
+            const stability = getStabilityCategory(disc.stability);
+
+            return (
+                <div className="detail-card">
+                    <h3>{disc.manufacturer} {disc.model}</h3>
+                    
+                    <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+                        <span className="disc-type-badge">{discType}</span>
+                        <span className={`stability-badge stability-${stability.class}`}>
+                            {stability.label}
+                        </span>
+                    </div>
+
+                    <div className="stats-grid">
+                        <div className="stat-box">
+                            <span className="stat-value">{disc.speed}</span>
+                            <span className="stat-label">Speed</span>
+                        </div>
+                        <div className="stat-box">
+                            <span className="stat-value">{disc.glide}</span>
+                            <span className="stat-label">Glide</span>
+                        </div>
+                        <div className="stat-box">
+                            <span className="stat-value">{disc.turn}</span>
+                            <span className="stat-label">Turn</span>
+                        </div>
+                        <div className="stat-box">
+                            <span className="stat-value">{disc.fade}</span>
+                            <span className="stat-label">Fade</span>
+                        </div>
+                    </div>
+
+                    <div style={{marginTop: '20px'}}>
+                        <div className="detail-row">
+                            <span className="detail-label">Stability Rating</span>
+                            <span className="detail-value">{disc.stability}</span>
+                        </div>
+                        <div className="detail-row">
+                            <span className="detail-label">Max Weight</span>
+                            <span className="detail-value">{disc.maxweight}g</span>
+                        </div>
+                        <div className="detail-row">
+                            <span className="detail-label">Diameter</span>
+                            <span className="detail-value">{disc.diameter}cm</span>
+                        </div>
+                        <div className="detail-row">
+                            <span className="detail-label">Height</span>
+                            <span className="detail-value">{disc.height}cm</span>
+                        </div>
+                        <div className="detail-row">
+                            <span className="detail-label">Rim Thickness</span>
+                            <span className="detail-value">{disc.rimthickness}cm</span>
+                        </div>
+                        <div className="detail-row">
+                            <span className="detail-label">Approved</span>
+                            <span className="detail-value">{disc.dateapproved}</span>
+                        </div>
+                    </div>
+
+                    {disc.weblink && (
+                        <div className="action-buttons">
+                            <a href={disc.weblink} target="_blank" rel="noopener noreferrer" 
+                               className="action-btn btn-primary" style={{textDecoration: 'none', textAlign: 'center'}}>
+                                Buy Now
+                            </a>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Render App
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
